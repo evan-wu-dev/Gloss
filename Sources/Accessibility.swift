@@ -22,11 +22,20 @@ enum AX {
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
         guard let element = element(appElement, kAXFocusedUIElementAttribute) else { return nil }
         if string(element, kAXSubroleAttribute) == kAXSecureTextFieldSubrole { return nil }
+        // 只管能编辑的输入框。钉钉等聊天软件里鼠标悬停到别人的消息，焦点会落到那条消息上，它也有文字和选区，
+        // 但内容不能改；不挡掉就会去翻译别人的话。
+        guard isEditable(element) else { return nil }
         guard let text = string(element, kAXValueAttribute), (text as NSString).length <= 20000,
               let selection = range(element, kAXSelectedTextRangeAttribute) else { return nil }
         let cursor = selection.location + selection.length
         guard let sentence = Sentence.target(in: text, cursor: cursor) else { return nil }
         return FocusSnapshot(element: element, pid: app.processIdentifier, text: text, cursor: cursor, sentence: sentence)
+    }
+
+    /// 输入框的内容可以改写；聊天记录、网页正文这类只读文字不行。
+    private static func isEditable(_ element: AXUIElement) -> Bool {
+        var settable: DarwinBoolean = false
+        return AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable) == .success && settable.boolValue
     }
 
     /// 光标处的屏幕矩形（AX 坐标：主屏左上为原点）；取不到时退回输入框本身的矩形。
