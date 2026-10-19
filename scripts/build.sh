@@ -4,8 +4,12 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 APP_DIR="$PROJECT_DIR/dist/Gloss.app"
 VERSION="${VERSION:-0.1.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
-# 用固定证书签名：ad-hoc 签名每次构建身份都变，辅助功能授权会失效要重新勾选。
-SIGNING_IDENTITY="${SIGNING_IDENTITY:-7D27009940D2F162DF9A11BC72748C2591BFD0A9}"
+# 签名证书：环境变量 SIGNING_IDENTITY，或写在 scripts/signing-identity（不进仓库）里。
+# 都没有就 ad-hoc 签名，能跑，但每次重新构建后要到辅助功能里重新勾一次。
+if [[ -z "${SIGNING_IDENTITY:-}" && -f "$PROJECT_DIR/scripts/signing-identity" ]]; then
+    SIGNING_IDENTITY="$(tr -d '[:space:]' < "$PROJECT_DIR/scripts/signing-identity")"
+fi
+SIGNING_IDENTITY="${SIGNING_IDENTITY:--}"
 BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/gloss-build.XXXXXX")"
 trap 'rm -rf "$BUILD_DIR"' EXIT
 mkdir -p "$APP_DIR/Contents/MacOS"

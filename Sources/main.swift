@@ -40,6 +40,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var uncommitted: (text: String, result: TranslationResult)?
     /// 按了朗读键但译文还没回来的句子。
     private var speakTarget: String?
+    /// 回车发出去的那句：发送后留一张译文卡。下一句的译文出来、显示满 5 秒（鼠标停在上面时不算）、
+    /// 切到别的应用或按 Esc 时收起。caret 是发送时光标的位置，输入框清空后卡片还留在原处。
+    private var sent: (text: String, mode: TranslateMode, caret: CGRect, pid: pid_t, shownAt: Date?)?
+    private var lastTarget: (mode: TranslateMode, caret: CGRect, pid: pid_t)?
 
     /// 调试：记下每次读到的输入框原文和光标，排查「只翻了半句」这类读取问题。
     /// `defaults write local.wufan.live-translate debugAX -bool YES` 打开，日志在配置目录的 debug-ax.log。
@@ -177,13 +181,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func tick() {
         guard enabled, let (snap, mode) = currentTarget(), let caret = AX.caretRect(snap) else {
             commitVocab()
-            overlay.hide()
+            // 输入框清空了：「这句已发送」的记忆跟着清掉，不然以后再打同一句（「好的」「嗯」）就永远不弹了。
+            dismissedText = nil
+            if !showSentCard(typingNext: false) { overlay.hide() }
             return
         }
+        lastTarget = (mode, caret, snap.pid)
         let text = snap.sentence.text
         if text != pendingText {
             pendingText = text
             changedAt = Date()
+            if text != dismissedText { dismissedText = nil }
             if debugAX { logSnapshot(snap) }
             if let pending = uncommitted, !text.hasPrefix(pending.text), !pending.text.hasPrefix(text) { commitVocab() }
         }
@@ -195,9 +203,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let autoHide = config?.autoHideSeconds ?? 15
         let idle = autoHide > 0 && Date().timeIntervalSince(changedAt) > autoHide && !overlay.isHovering
         if text == dismissedText || idle {
-            overlay.hide()
+            if !showSentCard(typingNext: false) { overlay.hide() }
             return
         }
+        // 接着打下一句：它的译文出来前，先留着刚发出那句的译文（变淡），译文一到就换过去。
+        if sent != nil, cache[text] == nil, partials[text] == nil, showSentCard(typingNext: true) {
+            if Date().timeIntervalSince(changedAt) * 1000 >= Double(config?.debounceMs ?? 600) { request(text, mode: mode) }
+            return
+        }
+        sent = nil
 
         if let message = configError {
             overlay.show(OverlayContent(phase: .message, translation: message), caret: caret)
@@ -254,17 +268,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         mode == .polish ? tr("润色") : nil
     }
 
+    /// Esc：全部收起。回车发送：不收起，原地留一张这句的译文卡；译文还没回来就马上请求，不再等停顿。
     private func dismiss(sending: Bool = false) {
-        guard overlay.isVisible || pendingText != nil else { return }
-        // 聊天里一般不打句号、直接回车发出去，所以发送也算这句写完了，自动朗读模式下念一遍。
-        if sending, config?.speakMode == "auto", let text = pendingText, text != dismissedText, text != lastSpoken,
-           let result = cache[text] {
-            lastSpoken = text
-            speaker.speak(result.translation)
-        }
-        dismissedText = pendingText
+        guard enabled, overlay.isVisible || pendingText != nil else { return }
+        let text = pendingText
+        dismissedText = text
         commitVocab()
-        overlay.hide()
+        guard sending, let text, text != sent?.text, let target = lastTarget else {
+            sent = nil
+            overlay.hide()
+            return
+        }
+        sent = (text, target.mode, target.caret, target.pid, nil)
+        if cache[text] == nil { request(text, mode: target.mode) }
+        showSentCard(typingNext: false)
     }
 
     private func commitVocab() {
@@ -282,6 +299,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func render(_ text: String, _ result: TranslationResult, mode: TranslateMode, caret: CGRect, phase: OverlayPhase) {
         lastShown = (text, result)
+        overlay.show(content(text, result, mode: mode, phase: phase), caret: caret)
+    }
+
+    private func content(_ text: String, _ result: TranslationResult, mode: TranslateMode, phase: OverlayPhase) -> OverlayContent {
         var content = OverlayContent(phase: phase, translation: result.translation, badge: badge(mode), note: result.note)
         content.words = result.words
             .filter { !vocab.isKnown($0.word) }
@@ -294,7 +315,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 content.diff = Diff.compare(text, result.translation)
             }
         }
-        overlay.show(content, caret: caret)
+        return content
+    }
+
+    /// 显示「已发送」的译文卡；没有在显示的卡片时返回 false。
+    @discardableResult
+    private func showSentCard(typingNext: Bool) -> Bool {
+        guard enabled, var card = sent else { return false }
+        // 切到别的应用、或者显示满 5 秒（鼠标停在上面时不算）就收起。
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier != card.pid {
+            sent = nil
+            return false
+        }
+        if overlay.isHovering, card.shownAt != nil { card.shownAt = Date() }
+        if let shownAt = card.shownAt, Date().timeIntervalSince(shownAt) > 5 {
+            sent = nil
+            return false
+        }
+        var shown: OverlayContent
+        if let result = cache[card.text] {
+            shown = content(card.text, result, mode: card.mode, phase: typingNext ? .stale : .done)
+            if card.shownAt == nil {
+                card.shownAt = Date()
+                speakSent(card.text, result)
+            }
+        } else if let partial = partials[card.text] {
+            shown = OverlayContent(phase: .streaming, translation: partial, badge: badge(card.mode))
+        } else if let message = errors[card.text] {
+            shown = OverlayContent(phase: .message, translation: message)
+        } else {
+            shown = OverlayContent(phase: .waiting)
+        }
+        shown.tag = typingNext ? tr("上一句 · 已发送") : tr("已发送")
+        sent = card
+        overlay.show(shown, caret: card.caret)
+        return true
+    }
+
+    /// 自动朗读模式下，发出去的那句念一遍（每句一次）。
+    private func speakSent(_ text: String, _ result: TranslationResult) {
+        guard config?.speakMode == "auto", text != lastSpoken else { return }
+        lastSpoken = text
+        speaker.speak(result.translation)
     }
 
     private func request(_ text: String, mode: TranslateMode) {
@@ -518,7 +580,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         UserDefaults.standard.set(enabled, forKey: "enabled")
         // 关闭时图标变灰。
         statusItem.button?.appearsDisabled = !enabled
-        if !enabled { overlay.hide() }
+        if !enabled {
+            // 关掉时把正在跟的这句也忘掉：不然回车发送时还会拿关之前那句弹出「已发送」卡片。
+            sent = nil
+            pendingText = nil
+            lastTarget = nil
+            lastShown = nil
+            overlay.hide()
+        }
         settingsModel.enabled = enabled
     }
 
@@ -689,73 +758,13 @@ if CommandLine.arguments.contains("--self-test") {
     exit(runSelfTest() ? 0 : 1)
 }
 
-/// 调样式用：`--demo <阶段> [配色] [--light]` 在屏幕左上固定位置摆一个浮窗，不读输入框、不请求模型。
-final class DemoDelegate: NSObject, NSApplicationDelegate {
-    private let overlay = OverlayController()
-    private let phase: String
-    private var timer: Timer?
-    private var backdrop: NSWindow?
-
-    init(phase: String, palette: Palette) {
-        self.phase = phase
-        super.init()
-        overlay.palette = palette
-    }
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        let caret = CGRect(x: 200, y: 200, width: 2, height: 18)
-        if CommandLine.arguments.contains("--light") {
-            // 垫一块白底，看浅色背景上的光晕。
-            let primaryHeight = NSScreen.screens.first?.frame.maxY ?? 0
-            let backdrop = NSWindow(contentRect: NSRect(x: 120, y: primaryHeight - 420, width: 700, height: 300),
-                                    styleMask: .borderless, backing: .buffered, defer: false)
-            backdrop.backgroundColor = .white
-            backdrop.level = .floating
-            backdrop.orderFrontRegardless()
-            self.backdrop = backdrop
-        }
-        let text = "Let's move this week's requirements review to Thursday afternoon."
-        let words = [OverlayWord(word: "requirements review", gloss: "需求评审", level: "B2", isNew: true),
-                     OverlayWord(word: "move … to", gloss: "改到", level: "B1", isNew: false)]
-        switch phase {
-        case "waiting":
-            overlay.show(OverlayContent(phase: .waiting), caret: caret)
-        case "refreshing":
-            overlay.show(OverlayContent(phase: .refreshing, translation: text, words: words), caret: caret)
-        case "streaming":
-            // 模拟模型的流：等 0.8 秒，之后每 0.2 秒到一截（几个词），到齐后出生词，停 2.5 秒再来一遍。
-            let parts = text.split(separator: " ").map(String.init)
-            var tickCount = 0
-            overlay.show(OverlayContent(phase: .waiting), caret: caret)
-            timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-                guard let self else { return }
-                tickCount = (tickCount + 1) % 26
-                let arrived = min(max(tickCount - 4, 0) * 3, parts.count)
-                if tickCount == 0 {
-                    self.overlay.hide()
-                } else if tickCount < 4 {
-                    self.overlay.show(OverlayContent(phase: .waiting), caret: caret)
-                } else if arrived < parts.count {
-                    self.overlay.show(OverlayContent(phase: .streaming, translation: parts.prefix(arrived).joined(separator: " ")), caret: caret)
-                } else {
-                    self.overlay.show(OverlayContent(phase: .done, translation: text, words: words), caret: caret)
-                }
-            }
-        case "polish":
-            let old = "I am very interesting in this project and want join your team."
-            let new = "I am very interested in this project and want to join your team."
-            overlay.show(OverlayContent(phase: .done, translation: new, diff: Diff.compare(old, new), badge: "润色",
-                                        note: "表示「感兴趣」用 interested（形容词）；want 后面要加 to。",
-                                        words: [OverlayWord(word: "interested in", gloss: "对…感兴趣", level: "A2", isNew: true)]), caret: caret)
-        default:
-            overlay.show(OverlayContent(phase: .done, translation: text, words: words), caret: caret)
-        }
-    }
-}
-
 if let index = CommandLine.arguments.firstIndex(of: "--demo") {
     let args = CommandLine.arguments.dropFirst(index + 1)
-    let demo = DemoDelegate(phase: args.first ?? "done", palette: Palette(rawValue: args.dropFirst().first(where: { !$0.hasPrefix("--") }) ?? "") ?? .aurora)
+    // 演示的界面语言：--lang en，默认跟随系统。要在建浮窗之前定，工具栏按钮的文字是建的时候取的。
+    if let lang = CommandLine.arguments.firstIndex(of: "--lang").map({ CommandLine.arguments.dropFirst($0 + 1).first ?? "" }) {
+        L10n.apply(lang)
+    }
+    let demo = DemoDelegate(phase: args.first ?? "done", palette: Palette(rawValue: args.dropFirst().first(where: { Palette(rawValue: $0) != nil }) ?? "") ?? .aurora)
     NSApplication.shared.delegate = demo
     NSApplication.shared.setActivationPolicy(.accessory)
     NSApplication.shared.run()

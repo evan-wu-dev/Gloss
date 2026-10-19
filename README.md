@@ -1,22 +1,63 @@
-# Gloss
+<p align="center">
+  <img src="assets/AppIcon-1024.png" width="128" alt="Gloss icon">
+</p>
 
-**English** · [简体中文](README.zh-CN.md)
+<h1 align="center">Gloss</h1>
 
-Gloss is a macOS menu bar app that translates the sentence you are typing, in any app, and shows it in a small bubble right below your cursor. Write in your native language to see how to say it in the language you're learning; write in the language you're learning to get it polished. New words are collected along the way so you can review them later.
+<p align="center">
+  Translates the sentence you're typing, in any Mac app, and shows it right below your cursor.
+</p>
 
-The name comes from the old practice of writing *glosses* — small translations and notes between the lines of a text. Its Chinese name, 字里行间, means "between the lines".
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-13%2B-black?logo=apple" alt="macOS 13+">
+  <img src="https://img.shields.io/badge/Apple%20silicon-arm64-555" alt="Apple silicon">
+  <img src="https://img.shields.io/badge/Swift-AppKit%20%2B%20SwiftUI-F05138?logo=swift&logoColor=white" alt="Swift">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license">
+</p>
+
+<p align="center"><b>English</b> · <a href="README.zh-CN.md">简体中文</a></p>
+
+<p align="center">
+  <img src="docs/images/hero-en.gif" width="820" alt="Typing an English sentence; a Spanish translation streams in below the cursor, then replaces the sentence">
+</p>
+
+Gloss is a menu bar app for people who write in a language they're still learning. Write in your native language and see how to say it in the language you're learning. Write in the language you're learning and Gloss polishes it. New words are collected along the way so you can review them later.
+
+The name comes from the old practice of writing *glosses*, the small translations and notes written between the lines of a text. Its Chinese name, 字里行间, means "between the lines".
 
 ## Features
 
-- **Works in any text field.** Gloss reads the sentence at your cursor through the macOS Accessibility API, so it works in chat apps, mail, browsers, and editors without plugins.
-- **Translates only the current sentence.** It waits for a short pause (0.6 s by default), skips half-typed pinyin, and ignores password fields.
-- **Translate or polish.** Writing in your native language gives a translation. Writing in the language you're learning gives a more natural version, with deletions struck through and additions underlined.
-- **Streams as it's generated.** The translation types itself out word by word, with a glowing border while it waits.
-- **Replace with one shortcut.** Press ⌃⌥E, or click the replace button on the bubble, to swap your sentence for the translation.
-- **Reads aloud.** Uses the built-in macOS voices, either with a shortcut (⌃⌥S) or automatically when a translation appears.
-- **Learns your vocabulary.** The model picks 0–3 words worth learning, based on your level. Words you have seen fewer than three times get an orange dot, and right-clicking a word marks it as known. You can export everything to Anki.
-- **Bring your own model.** Works with any OpenAI-compatible API: DeepSeek, Zhipu GLM, Qwen, Kimi, OpenAI, and others. Add, edit, and switch models in Settings.
-- **Seven languages.** Chinese, English, Japanese, Korean, Spanish, French, and German, as both the languages you translate between and the app's interface language.
+**Works in any text field.** Gloss reads the sentence at your cursor through the macOS Accessibility API, so it works in chat apps, mail, browsers, and editors without plugins. It waits for a short pause (0.6 s by default), skips half-typed pinyin, and ignores password fields, read-only text, and fields that only contain a link.
+
+**Streams as it's generated.** While the model is thinking, the bubble shows a glowing border. Then the translation types itself out word by word.
+
+**Replace, read aloud, copy.** Hover over the bubble for these three buttons. To replace without the mouse, press ⌃⌥E. To read aloud, press ⌃⌥S, or turn on automatic reading.
+
+<p align="center">
+  <img src="docs/images/toolbar-en.png" width="820" alt="The bubble with its hover toolbar: read aloud, replace, copy">
+</p>
+
+**Polishes what you write in the language you're learning.** You get a more natural version, with deletions struck through, additions underlined, and a one-line explanation.
+
+<p align="center">
+  <img src="docs/images/polish-en.png" width="820" alt="A Spanish sentence polished: “unir” is struck through and “unirme” is added, with an explanation">
+</p>
+
+**Learns your vocabulary.** The model picks 0–3 words worth learning, based on your level (CEFR A1–C2). Words you have seen fewer than three times get an orange dot. Click a word to hear it, or right-click it to mark it as known. You can export everything to Anki.
+
+**Stays after you hit Return.** In chat apps you usually press Return as soon as you finish typing. Gloss keeps the translation of the message you just sent on screen for a few seconds, marked *Sent*, so you still get to read it.
+
+**Sentence or paragraph.** By default Gloss translates the sentence at your cursor. For a very long sentence, it translates only the two clauses closest to the cursor. Switch to paragraph mode to translate the whole paragraph with full context.
+
+**Bring your own model.** Works with any OpenAI-compatible API, such as DeepSeek, Zhipu GLM, Qwen, Kimi, or OpenAI. You can add, edit, and switch models in Settings.
+
+**Seven languages.** Chinese, English, Japanese, Korean, Spanish, French, and German, both for translation and for the interface.
+
+**Pick your glow.** Choose from four color palettes for the border.
+
+<p align="center">
+  <img src="docs/images/palettes-en.png" width="560" alt="The waiting bubble in four palettes: Aurora, Ocean, Sunset, Mono">
+</p>
 
 ## Requirements
 
@@ -24,27 +65,55 @@ The name comes from the old practice of writing *glosses* — small translations
 - An API key for an OpenAI-compatible model service
 - Accessibility permission, so Gloss can read and replace text in other apps
 
-## Build
+## Install
 
-There is no Xcode project. The build script compiles the sources with `swiftc` and signs the app:
+Download `Gloss-<version>.zip` from [Releases](https://github.com/evan-wu-dev/Gloss/releases), unzip it, and move `Gloss.app` to your Applications folder.
+
+Gloss isn't notarized by Apple, so macOS blocks it the first time you open it. To allow it:
+
+- **macOS 15 Sequoia and later**: open Gloss once and close the warning. Then go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** next to Gloss.
+- **macOS 13–14**: right-click `Gloss.app`, choose **Open**, then click **Open** again.
+
+You can also clear the quarantine flag in Terminal: `xattr -dr com.apple.quarantine /Applications/Gloss.app`.
+
+When you install a newer version, macOS treats it as a different app for Accessibility. If Gloss stops reacting after an update, turn it off and on again under **System Settings → Privacy & Security → Accessibility**.
+
+### Build from source
+
+You need the Xcode command line tools (`xcode-select --install`). Then:
 
 ```bash
+git clone https://github.com/evan-wu-dev/Gloss.git
+cd Gloss
 ./scripts/build.sh
+open dist/Gloss.app
 ```
 
-The app is written to `dist/Gloss.app`, and the build ends with a self-test. By default it signs with a fixed certificate, so the Accessibility permission survives rebuilds. To use your own certificate:
+The build compiles the sources with `swiftc`, packages `dist/Gloss.app`, and runs a self-test. There is no Xcode project.
+
+By default the app gets an ad-hoc signature. macOS ties the Accessibility permission to the signature, so after each rebuild you need to turn Gloss off and on again under **System Settings → Privacy & Security → Accessibility**. To avoid that, sign with a certificate of your own, such as a free Apple Development certificate. You can pass it on the command line:
 
 ```bash
 SIGNING_IDENTITY="Apple Development: Your Name (XXXXXXXXXX)" ./scripts/build.sh
 ```
 
+Or save it once in `scripts/signing-identity`. Git ignores that file. To package a release zip, run `VERSION=x.y.z ./scripts/release.sh`.
+
 ## First run
 
-1. Open `dist/Gloss.app`. The 文/A icon appears in the menu bar.
-2. When macOS asks, allow Gloss in **System Settings → Privacy & Security → Accessibility**.
-3. Open **Settings… (⌘,) → Model**, edit a model or add a new one, and enter your API key.
-4. In **Languages**, choose your native language, the language you're learning, and your level.
-5. Start typing anywhere.
+The first time you open Gloss, a short welcome guide walks you through four steps:
+
+1. Grant Accessibility permission.
+2. Set up a model (you can skip this and do it later).
+3. Choose your languages and level.
+4. Try it on a sample sentence.
+
+<p align="center">
+  <img src="docs/images/welcome-0-en.png" width="49%" alt="Welcome screen">
+  <img src="docs/images/welcome-3-en.png" width="49%" alt="Choosing languages and level">
+</p>
+
+When you're done, the window flies into the menu bar icon. That's where you'll find Gloss from then on. You can reopen the guide from **Settings → General**.
 
 If the menu bar is too crowded to show the icon, open Gloss again from Spotlight to bring up Settings.
 
@@ -57,16 +126,20 @@ If the menu bar is too crowded to show the icon, open Gloss again from Spotlight
 | Copy the translation | The copy button |
 | Hear a single word | Click the word |
 | Mark a word as known | Right-click the word |
-| Hide the bubble | Esc, sending the message with Return, or waiting 15 s |
+| Hide the bubble | Esc, or wait 15 s |
 | Turn Gloss off | The switch at the top of the menu (the icon turns gray) |
 
 You can change both shortcuts in **Settings → Shortcuts** by clicking a shortcut and pressing a new combination.
 
 ## Settings
 
+<p align="center">
+  <img src="docs/images/settings-0-en.png" width="520" alt="The General tab of the Settings window">
+</p>
+
 | Tab | What's there |
 | --- | --- |
-| General | Interface language, on/off, Open at Login, polishing, streaming, pause before translating, auto-hide delay |
+| General | Interface language, on/off, Open at Login, welcome guide, sentence or paragraph mode, polishing, streaming, pause before translating, auto-hide delay |
 | Languages | Native language, language you're learning, your level (CEFR A1–C2) |
 | Model | List of models, switch the active one, add, edit, and delete; extra request parameters under *Advanced* |
 | Read aloud | Off, with shortcut, or automatic; voice, speed, and preview |
@@ -98,15 +171,15 @@ Words are saved per language in `~/Library/Application Support/LiveTranslate/voc
 
 ## Known limitations
 
-- **Terminals built on web technology** (such as Orca and other xterm.js-based terminals) don't expose the line you're typing. Gloss only sees fragments there, so translations may be incomplete.
+- **Terminals built on web technology**, such as Orca and other xterm.js-based terminals, don't expose the line you're typing. Gloss only sees fragments there, so translations may be incomplete.
 - In a few Electron and Chromium apps, selecting text through Accessibility doesn't work. Gloss then falls back to selecting with ⇧← and pasting.
 - Only Apple silicon builds are produced.
 
-## Project layout
+## Development
 
 ```
 Sources/
-  main.swift                  App delegate, main loop, menu, self-test, --demo mode
+  main.swift                  App delegate, main loop, menu, self-test
   Accessibility.swift         Reading the focused field, caret position, replacing text
   Sentence.swift              Finding the sentence at the cursor, pinyin detection
   Language.swift              Supported languages and language detection
@@ -114,10 +187,24 @@ Sources/
   Overlay.swift               The bubble: glow, streaming text, hover toolbar, word chips
   Diff.swift                  Word-level diff for polished sentences
   Settings.swift              Settings window (SwiftUI)
+  Onboarding.swift            Welcome guide (SwiftUI)
+  Demo.swift                  --demo mode for previews and README media
   Localization*.swift         Interface strings in seven languages
   Vocab.swift / Speech.swift  Vocabulary store and text-to-speech
 assets/AppIcon-1024.png       App icon source (the build turns it into AppIcon.icns)
 scripts/build.sh              Build, sign, and self-test
+scripts/release.sh            Package an ad-hoc signed zip for GitHub Releases
+scripts/make-readme-media.sh  Regenerate the screenshots and GIFs in docs/images
 ```
 
-To preview the bubble without typing anywhere, run `dist/Gloss.app/Contents/MacOS/Gloss --demo <waiting|streaming|refreshing|done|polish> [aurora|ocean|sunset|mono] [--light]`.
+To preview the bubble without typing anywhere, run:
+
+```bash
+dist/Gloss.app/Contents/MacOS/Gloss --demo <waiting|streaming|done|polish|hero|toolbar> [aurora|ocean|sunset|mono] [--lang en]
+```
+
+All images in this README come from that demo mode. `scripts/make-readme-media.sh` records them again; it needs `ffmpeg`, ImageMagick, and Screen Recording permission for your terminal.
+
+## License
+
+[MIT](LICENSE)

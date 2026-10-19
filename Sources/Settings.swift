@@ -136,7 +136,7 @@ final class SettingsWindowController: NSWindowController {
         }
         add(tr("通用"), "gearshape", height: 500, GeneralSettings())
         add(tr("语言"), "globe", height: 190, LanguageSettings())
-        add(tr("模型"), "cpu", height: 200, ModelSettings())
+        add(tr("模型"), "cpu", height: 270, ModelSettings())
         add(tr("朗读"), "speaker.wave.2", height: 205, SpeechSettings())
         add(tr("快捷键"), "keyboard", height: 215, ShortcutSettings())
         add(tr("外观"), "paintpalette", height: 160, AppearanceSettings())

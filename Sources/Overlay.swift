@@ -421,6 +421,8 @@ struct OverlayContent: Equatable {
     var badge: String?
     /// 等待时跳点旁边的一行小字（段落模式翻得慢时提示一下）。
     var hint: String?
+    /// 卡片顶上的灰色小标签，如「已发送」。
+    var tag: String?
     var note = ""
     var noteIsOK = false
     var words: [OverlayWord] = []
@@ -433,6 +435,8 @@ final class OverlayController: NSObject {
     var onSpeak: (() -> Void)?
     var onReplace: (() -> Void)?
     var palette: Palette = .aurora { didSet { applyPalette() } }
+    /// 演示截图用：当作鼠标一直停在卡片上，工具栏常亮。
+    var pinHover = false { didSet { updateHover() } }
     /// 工具栏按钮的悬停提示里显示的快捷键。
     /// 设快捷键时顺带按当前界面语言刷新三个按钮的提示（重新加载配置时会设）。
     var speakShortcut: String? {
@@ -629,6 +633,11 @@ final class OverlayController: NSObject {
                                              insets: NSEdgeInsets(top: 1, left: 6, bottom: 1, right: 6), radius: 5,
                                              fill: { NSColor.systemGreen.withAlphaComponent(0.14) }))
         }
+        if let tag = next.tag {
+            badgeRow.addArrangedSubview(Pill(tag, font: .systemFont(ofSize: 11, weight: .medium), color: .secondaryLabelColor,
+                                             insets: NSEdgeInsets(top: 1, left: 6, bottom: 1, right: 6), radius: 5,
+                                             fill: { NSColor.labelColor.withAlphaComponent(0.07) }))
+        }
         badgeRow.isHidden = badgeRow.arrangedSubviews.isEmpty
 
         updateReveal(next, previous: previous)
@@ -687,7 +696,10 @@ final class OverlayController: NSObject {
 
     private func layoutCard() {
         card.layoutSubtreeIfNeeded()
-        let cardSize = card.fittingSize
+        // 卡片至少能放下悬停工具栏（94 宽，离右边 12，再留点左边距），不然短译文（「Done.」）时工具栏会伸出窗口被裁掉。
+        var cardSize = card.fittingSize
+        // 只有译文出来以后才会出现工具栏，等待中的小胶囊保持原来的大小。
+        if content?.phase == .done { cardSize.width = max(cardSize.width, 124) }
         let cardFrame = NSRect(x: margin.left, y: margin.bottom, width: cardSize.width, height: cardSize.height)
         root.frame.size = NSSize(width: cardSize.width + margin.left + margin.right,
                                  height: cardSize.height + margin.top + margin.bottom)
@@ -878,7 +890,7 @@ final class OverlayController: NSObject {
         let cardRect = panel.convertToScreen(shadowHost.frame).insetBy(dx: -2, dy: -2)
         let canAct = content?.phase == .done
         let toolbarRect = panel.convertToScreen(toolbar.frame)
-        let inside = cardRect.contains(mouse) || (toolbarShown && toolbarRect.contains(mouse))
+        let inside = pinHover || cardRect.contains(mouse) || (toolbarShown && toolbarRect.contains(mouse))
         hovering = inside
         if panel.ignoresMouseEvents == inside { panel.ignoresMouseEvents = !inside }
         let show = inside && canAct

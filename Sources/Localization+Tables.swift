@@ -172,6 +172,9 @@ extension L10n {
         "段落": "段落",
         "整段翻译中，稍慢一些": "段落全体を翻訳中…少し時間がかかります",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "翻訳の範囲：「文」はカーソルのある文だけを訳します（とても長い文はカーソル付近の 2 節だけ）。「段落」は段落全体を訳すので文脈は十分ですが、遅くなりトークンも多く使います。",
+        // 发送后的译文卡
+        "已发送": "送信済み",
+        "上一句 · 已发送": "前の文 · 送信済み",
     ]
 
     /// 한국어
@@ -343,6 +346,9 @@ extension L10n {
         "段落": "단락",
         "整段翻译中，稍慢一些": "단락 전체를 번역하는 중이라 조금 느립니다",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "번역 범위: ‘문장’은 커서가 있는 문장만 번역합니다(아주 긴 문장은 커서 근처 두 구절만). ‘단락’은 단락 전체를 번역해 맥락이 풍부하지만 더 느리고 토큰도 더 씁니다.",
+        // 发送后的译文卡
+        "已发送": "보냄",
+        "上一句 · 已发送": "이전 문장 · 보냄",
     ]
 
     /// Español
@@ -514,6 +520,9 @@ extension L10n {
         "段落": "Párrafo",
         "整段翻译中，稍慢一些": "Traduciendo todo el párrafo, tarda un poco más",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "Traducir: en modo Frase solo se traduce la frase del cursor (en frases muy largas, solo las dos partes cercanas). En modo Párrafo se traduce todo el párrafo: más contexto, pero más lento y con más tokens.",
+        // 发送后的译文卡
+        "已发送": "Enviado",
+        "上一句 · 已发送": "Anterior · Enviado",
     ]
 
     /// Français
@@ -685,6 +694,9 @@ extension L10n {
         "段落": "Paragraphe",
         "整段翻译中，稍慢一些": "Traduction du paragraphe entier, un peu plus lent",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "Traduire : le mode Phrase ne traduit que la phrase du curseur (pour une phrase très longue, seulement les deux propositions voisines). Le mode Paragraphe traduit tout le paragraphe : plus de contexte, mais plus lent et plus de tokens.",
+        // 发送后的译文卡
+        "已发送": "Envoyé",
+        "上一句 · 已发送": "Précédent · Envoyé",
     ]
 
     /// Deutsch
@@ -856,5 +868,8 @@ extension L10n {
         "段落": "Absatz",
         "整段翻译中，稍慢一些": "Ganzer Absatz wird übersetzt – dauert etwas länger",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "Übersetzen: Im Satzmodus wird nur der Satz am Cursor übersetzt (bei sehr langen Sätzen nur die zwei Satzteile in der Nähe). Im Absatzmodus der ganze Absatz – mehr Kontext, aber langsamer und mehr Tokens.",
+        // 发送后的译文卡
+        "已发送": "Gesendet",
+        "上一句 · 已发送": "Vorheriger · Gesendet",
     ]
 }

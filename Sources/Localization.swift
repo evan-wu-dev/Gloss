@@ -241,6 +241,9 @@ enum L10n {
         "段落": "Paragraph",
         "整段翻译中，稍慢一些": "Translating the whole paragraph — this takes a bit longer",
         "翻译范围：句子模式只翻光标所在的一句，很长的句子只翻光标附近的两小段；段落模式整段一起翻，上下文更完整，但更慢、也更费 token。": "Translate: Sentence mode translates only the sentence at your cursor (for very long sentences, just the two clauses near it). Paragraph mode translates the whole paragraph — more context, but slower and uses more tokens.",
+        // 发送后的译文卡
+        "已发送": "Sent",
+        "上一句 · 已发送": "Previous · Sent",
     ]
 }
 
