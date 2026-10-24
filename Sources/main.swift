@@ -15,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let speaker = Speaker()
     private let settingsModel = SettingsModel()
     private var settingsWindow: SettingsWindowController?
+    private let vocabModel = VocabListModel()
+    private var vocabWindow: VocabWindowController?
     private var onboarding: OnboardingWindowController?
     private var lastSpoken: String?
     private var timer: Timer?
@@ -37,7 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var replaceTarget: String?
     /// 最近翻好、还没记进生词本的句子。这句写完（换到别的句子、发出去清空、被替换）才记一次，
     /// 免得半句话每停顿一次就多算一次「见过」。
-    private var uncommitted: (text: String, result: TranslationResult)?
+    private var uncommitted: (text: String, mode: TranslateMode, result: TranslationResult)?
     /// 按了朗读键但译文还没回来的句子。
     private var speakTarget: String?
     /// 回车发出去的那句：发送后留一张译文卡。下一句的译文出来、显示满 5 秒（鼠标停在上面时不算）、
@@ -61,8 +63,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
 
-        overlay.onToggleKnown = { [weak self] word in self?.vocab.toggleKnown(word) }
-        overlay.onSpeakWord = { [weak self] word in self?.speaker.speak(word) }
+        overlay.onMarkKnown = { [weak self] word in
+            self?.vocab.setKnown(word, true)
+            self?.tick()
+        }
+        overlay.onSpeakWord = { [weak self] word in
+            self?.vocab.relearn(word)
+            self?.speaker.speak(word)
+        }
         overlay.onSpeak = { [weak self] in self?.speakCurrent() }
         overlay.onReplace = { [weak self] in self?.replaceCurrent() }
         settingsModel.write = { [weak self] changes in
@@ -88,6 +96,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsModel.setEnabled = { [weak self] on in self?.setEnabled(on) }
         settingsModel.preview = { [weak self] text in self?.speaker.speak(text) }
         settingsModel.showOnboarding = { [weak self] in self?.showOnboarding() }
+        vocabModel.speak = { [weak self] word in self?.speaker.speak(word) }
+        vocabModel.setKnown = { [weak self] word, known in self?.vocab.setKnown(word, known) }
+        vocabModel.delete = { [weak self] words in self?.vocab.delete(words) }
+        vocabModel.export = { [weak self] in self?.exportAnki() }
         reloadConfig()
         // 第一次打开走欢迎引导（里面会请求辅助功能权限）；之后只在没授权时弹系统提示。
         if UserDefaults.standard.bool(forKey: "onboardingDone") {
@@ -287,7 +299,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func commitVocab() {
         guard let pending = uncommitted else { return }
         uncommitted = nil
-        vocab.record(pending.result.words, example: pending.result.translation, exampleZh: pending.text)
+        vocab.record(pending.result.words, example: pending.result.translation, exampleZh: pending.text,
+                     written: pending.mode == .polish ? pending.text : nil)
     }
 
     /// 自动朗读：译文出来就念，同一句只念一次；接着改这句、出了新译文会再念新的。
@@ -305,7 +318,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func content(_ text: String, _ result: TranslationResult, mode: TranslateMode, phase: OverlayPhase) -> OverlayContent {
         var content = OverlayContent(phase: phase, translation: result.translation, badge: badge(mode), note: result.note)
         content.words = result.words
-            .filter { !vocab.isKnown($0.word) }
+            .filter { vocab.shouldShow($0) }
             .map { OverlayWord(word: $0.word, gloss: $0.gloss, level: $0.level, isNew: vocab.isNew($0.word)) }
         if mode == .polish {
             if result.translation == text {
@@ -378,7 +391,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 case .success(let translated):
                     if self.cache.count > 300 { self.cache.removeAll() }
                     self.cache[text] = translated
-                    self.uncommitted = (text, translated)
+                    self.uncommitted = (text, mode, translated)
                     if self.replaceTarget == text {
                         self.replaceTarget = nil
                         self.replaceCurrent()
@@ -458,7 +471,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         applyLanguage(config.uiLanguage)
         Sentence.scope = config.scope
         overlay.palette = config.palette
-        vocab = VocabStore(url: VocabStore.url(for: config.learningLanguage))
+        vocab = VocabStore(url: VocabStore.url(for: config.learningLanguage), learnerLevel: config.learnerLevel)
+        vocab.onChange = { [weak self] in self?.refreshVocabWindow() }
+        refreshVocabWindow()
         hotKey = HotKey(spec: config.replaceHotkey) { [weak self] in self?.replaceCurrent() }
         if hotKey == nil { configError = tr("替换快捷键「%@」无法注册（写法不对或被占用）", config.replaceHotkey) }
         speaker.configure(language: config.learningLanguage, voiceID: config.speakVoice, rate: config.speakRate)
@@ -531,8 +546,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         })))
         menu.addItem(.separator())
 
-        let unknown = vocab.entries.values.filter { !$0.known }.count
-        menu.addItem(icon("square.and.arrow.up", item(tr("导出生词到 Anki（%@）", "\(unknown)"), #selector(exportAnki))))
+        menu.addItem(icon("book", item(tr("生词本（%@）…", "\(vocab.learning.count)"), #selector(openVocab))))
         let settings = icon("gearshape", item(tr("设置…"), #selector(openSettings)))
         settings.keyEquivalent = ","
         menu.addItem(settings)
@@ -619,6 +633,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsModel.message = configError
         if settingsWindow == nil { settingsWindow = SettingsWindowController(model: settingsModel) }
         settingsWindow?.present()
+    }
+
+    @objc private func openVocab() {
+        if vocabWindow == nil { vocabWindow = VocabWindowController(model: vocabModel) }
+        refreshVocabWindow()
+        vocabWindow?.present()
+    }
+
+    private func refreshVocabWindow() {
+        guard vocabWindow != nil, let config else { return }
+        vocabModel.load(vocab, language: config.learningLanguage)
     }
 
     @objc private func exportAnki() {
@@ -745,6 +770,23 @@ func runSelfTest() -> Bool {
     check(Diff.compare("Thanks!", "Thanks!")?.allSatisfy { $0.kind == .same } == true, "润色对比：没改")
     check(Diff.compare("Me no like it", "I really don't enjoy this at all") == nil, "润色对比：整句重写不标")
     check(Diff.tokens("今天 don't") == ["今", "天", " ", "don't"], "润色分词")
+
+    let vocabURL = FileManager.default.temporaryDirectory.appendingPathComponent("gloss-self-test-vocab.json")
+    try? FileManager.default.removeItem(at: vocabURL)
+    let store = VocabStore(url: vocabURL, learnerLevel: "B1")
+    let hard = LearnWord(word: "attrition", gloss: "", level: "C1")
+    let easy = LearnWord(word: "download", gloss: "", level: "B1")
+    check(!store.shouldShow(easy) && store.shouldShow(hard), "生词：按水平过滤")
+    store.record([hard, easy], example: "", exampleZh: "", written: nil)
+    check(store.entries["download"] == nil, "生词：不高于水平的不记")
+    check(store.shouldShow(hard), "生词：刚记过的这句接着显示")
+    store.record([], example: "", exampleZh: "", written: nil)
+    check(!store.shouldShow(hard) && store.shouldShow(hard, now: Date().addingTimeInterval(86400 * 1.1)), "生词：隔一天再提示")
+    store.relearn("attrition")
+    check(store.shouldShow(hard), "生词：点了朗读从头排")
+    store.record([LearnWord(word: "resilient", gloss: "", level: "B2")], example: "", exampleZh: "", written: "She is resilient.")
+    check(store.entries["resilient"]?.known == true, "生词：自己写出来的算掌握")
+    try? FileManager.default.removeItem(at: vocabURL)
 
     if failures.isEmpty {
         print("self-test OK")

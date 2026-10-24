@@ -295,18 +295,20 @@ private final class Pill: NSView {
     }
 }
 
-/// 一个词的小标签：中性底色，生词前面一个橙点，右侧小字标等级。左键朗读，右键标记认识了。
+/// 一个词的小标签：中性底色，生词前面一个橙点，右侧小字标等级，最右一个 ✓。点词朗读，点 ✓ 或右键标为已掌握。
 private final class WordChip: NSView {
     let word: String
     var onClick: ((String) -> Void)?
-    var onRightClick: ((String) -> Void)?
+    var onMarkKnown: ((String) -> Void)?
+    private let check = NSImageView()
+    private var hovered = false { didSet { check.contentTintColor = hovered ? .secondaryLabelColor : .tertiaryLabelColor } }
 
     init(_ item: OverlayWord) {
         word = item.word
         super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 7
-        toolTip = item.isNew ? tr("生词 · 点击朗读 · 右键标记为认识了") : tr("点击朗读 · 右键标记为认识了")
+        toolTip = item.isNew ? tr("生词 · 点击朗读 · 点 ✓ 标为已掌握") : tr("点击朗读 · 点 ✓ 标为已掌握")
 
         let row = NSStackView()
         row.orientation = .horizontal
@@ -338,7 +340,14 @@ private final class WordChip: NSView {
                                         insets: NSEdgeInsets(top: 0, left: 4, bottom: 0, right: 4), radius: 4,
                                         stroke: { NSColor.secondaryLabelColor.withAlphaComponent(0.3) }))
         }
+        check.image = NSImage(systemSymbolName: "checkmark.circle", accessibilityDescription: tr("标为已掌握"))?
+            .withSymbolConfiguration(.init(pointSize: 11, weight: .medium))
+        check.contentTintColor = .tertiaryLabelColor
+        check.toolTip = tr("标为已掌握")
+        row.addArrangedSubview(check)
         addSubview(row)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self))
         NSLayoutConstraint.activate([
             row.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             row.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
@@ -357,8 +366,14 @@ private final class WordChip: NSView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { frame.contains(point) ? self : nil }
-    override func mouseDown(with event: NSEvent) { onClick?(word) }
-    override func rightMouseDown(with event: NSEvent) { onRightClick?(word) }
+    override func mouseEntered(with event: NSEvent) { hovered = true }
+    override func mouseExited(with event: NSEvent) { hovered = false }
+    override func mouseDown(with event: NSEvent) {
+        // ✓ 很小，左右各放宽几点好点中。
+        let point = check.convert(event.locationInWindow, from: nil)
+        if check.bounds.insetBy(dx: -4, dy: -4).contains(point) { onMarkKnown?(word) } else { onClick?(word) }
+    }
+    override func rightMouseDown(with event: NSEvent) { onMarkKnown?(word) }
 }
 
 /// 悬停工具栏上的一个图标按钮。
@@ -431,7 +446,7 @@ struct OverlayContent: Equatable {
 /// 光标下方的译文浮窗。窗口比卡片大一圈透明边：留给外圈光晕、阴影和悬停工具栏。
 final class OverlayController: NSObject {
     var onSpeakWord: ((String) -> Void)?
-    var onToggleKnown: ((String) -> Void)?
+    var onMarkKnown: ((String) -> Void)?
     var onSpeak: (() -> Void)?
     var onReplace: (() -> Void)?
     var palette: Palette = .aurora { didSet { applyPalette() } }
@@ -653,7 +668,7 @@ final class OverlayController: NSObject {
             for item in next.words {
                 let chip = WordChip(item)
                 chip.onClick = { [weak self] word in self?.onSpeakWord?(word) }
-                chip.onRightClick = { [weak self] word in self?.onToggleKnown?(word) }
+                chip.onMarkKnown = { [weak self] word in self?.onMarkKnown?(word) }
                 wordsRow.addArrangedSubview(chip)
             }
         }

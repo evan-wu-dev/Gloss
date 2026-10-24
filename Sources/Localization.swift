@@ -60,7 +60,6 @@ enum L10n {
         "关闭": "Off",
         "按快捷键": "With shortcut",
         "自动朗读": "Automatically",
-        "导出生词到 Anki（%@）": "Export words to Anki (%@)",
         "设置…": "Settings…",
         "退出": "Quit",
 
@@ -70,8 +69,6 @@ enum L10n {
         "替换原句": "Replace sentence",
         "复制": "Copy",
         "复制译文": "Copy translation",
-        "点击朗读 · 右键标记为认识了": "Click to hear · Right-click to mark as known",
-        "生词 · 点击朗读 · 右键标记为认识了": "New word · Click to hear · Right-click to mark as known",
 
         // 错误
         "翻译失败：%@": "Translation failed: %@",
@@ -244,6 +241,27 @@ enum L10n {
         // 发送后的译文卡
         "已发送": "Sent",
         "上一句 · 已发送": "Previous · Sent",
+        // 生词本
+        "生词本（%@）…": "Vocabulary (%@)…",
+        "生词 · 点击朗读 · 点 ✓ 标为已掌握": "New word · Click to hear · Click ✓ to mark as learned",
+        "点击朗读 · 点 ✓ 标为已掌握": "Click to hear · Click ✓ to mark as learned",
+        "标为已掌握": "Mark as learned",
+        "移回学习中": "Move back to Learning",
+        "生词本": "Vocabulary",
+        "生词本 · %@": "Vocabulary · %@",
+        "学习中（%@）": "Learning (%@)",
+        "已掌握（%@）": "Learned (%@)",
+        "搜索": "Search",
+        "导出到 Anki…": "Export to Anki…",
+        "还没有掌握的词": "No learned words yet",
+        "还没有生词": "No words yet",
+        "没有匹配的词": "No matching words",
+        "已掌握的词不再在浮窗里出现。用外语自己写出来的词会自动算掌握。": "Learned words no longer appear in the popup. Words you write yourself in the language you're learning count as learned automatically.",
+        "生词在浮窗里出现、没点它朗读，就算记得一次，隔 1、3、7、15、30 天再提示，隔完自动算掌握；点了朗读会从头再来。": "Each time a word shows up in the popup and you don't click to hear it, it counts as remembered and comes back after 1, 3, 7, 15 and 30 days, then counts as learned. Clicking to hear it starts it over.",
+        "另有 %@ 个词不高于你的水平（%@），不再提示。": "%@ more words are at or below your level (%@) and are no longer shown.",
+        "见过 %@ 次": "Seen %@×",
+        "下次遇到就提示": "Shown next time it comes up",
+        "%@ 天后再提示": "Shown again in %@ days",
     ]
 }
 

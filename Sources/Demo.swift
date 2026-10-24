@@ -8,7 +8,8 @@ import AppKit
 ///   toolbar 译文出来、鼠标停在上面时的工具栏
 ///   polish  写外语时的润色对比
 ///   sent    回车发送后留下的「已发送」卡片
-/// `--demo settings <页序号>` / `--demo welcome <步骤序号>`：用示例数据打开设置窗口、欢迎引导，不读也不写 config.json。
+/// `--demo settings <页序号>` / `--demo welcome <步骤序号>` / `--demo vocab`：用示例数据打开设置窗口、欢迎引导、生词本，
+/// 不读也不写 config.json 和生词本。
 /// 舞台启动后在标准输出打一行 `STAGE x y 宽 高 循环秒数`（主屏左上原点的点坐标），录屏脚本按它裁剪；hero 每轮开头再打一行 `LOOP 开机秒数`。
 final class DemoDelegate: NSObject, NSApplicationDelegate {
     static let scenes = ["hero", "toolbar", "polish", "sent"]
@@ -31,6 +32,7 @@ final class DemoDelegate: NSObject, NSApplicationDelegate {
         let detail = CommandLine.arguments.drop { $0 != phase }.dropFirst().first.flatMap { Int($0) } ?? 0
         if phase == "settings" { return showSettings(tab: detail) }
         if phase == "welcome" { return showWelcome(step: detail) }
+        if phase == "vocab" { return showVocab() }
         if Self.scenes.contains(phase) {
             // 截图统一用浅色，跟系统外观无关。
             NSApp.appearance = NSAppearance(named: .aqua)
@@ -142,6 +144,25 @@ final class DemoDelegate: NSObject, NSApplicationDelegate {
         model.speakHotkey = "ctrl+option+s"
         let controller = SettingsWindowController(model: model)
         (controller.window?.contentViewController as? NSTabViewController)?.selectedTabViewItemIndex = tab
+        window = controller
+        controller.present()
+    }
+
+    private func showVocab() {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("gloss-demo-vocab.json")
+        try? FileManager.default.removeItem(at: url)
+        let store = VocabStore(url: url, learnerLevel: "B1")
+        let samples = [("requirements review", "需求评审", "B2", "Let's do the requirements review tomorrow.", "明天做需求评审吧。"),
+                       ("attrition", "人员流失", "C1", "Attrition has been low this year.", "今年人员流失不高。"),
+                       ("at a glance", "一眼看出", "B2", "You can see the status at a glance.", "一眼就能看到状态。")]
+        for (word, gloss, level, example, source) in samples {
+            store.record([LearnWord(word: word, gloss: gloss, level: level)], example: example, exampleZh: source, written: nil)
+        }
+        store.record([LearnWord(word: "download", gloss: "下载", level: "B1")], example: "", exampleZh: "", written: nil)
+        store.relearn("attrition")
+        let model = VocabListModel()
+        model.load(store, language: Language.named("en") ?? Language.all[1])
+        let controller = VocabWindowController(model: model)
         window = controller
         controller.present()
     }

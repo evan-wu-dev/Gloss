@@ -127,7 +127,8 @@ final class LLMClient {
             : ""
         let wordRule = """
         Pick words or short phrases that literally appear in your sentence and are worth learning for a CEFR \(level) learner: \
-        words above that level, or useful collocations. Skip basic words. Never suggest a word that is not in your sentence. \
+        words strictly above \(level) (never \(level) or below), or useful collocations above that level. Skip basic and everyday words. \
+        Rate each word's CEFR level honestly; it is used to filter. Never suggest a word that is not in your sentence. \
         For short or simple sentences, return an empty list. Use the dictionary form. Each gloss is a short meaning in \(native).\(reading)
         """
         switch mode {

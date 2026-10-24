@@ -43,7 +43,7 @@ The name comes from the old practice of writing *glosses*, the small translation
   <img src="docs/images/polish-en.png" width="820" alt="A Spanish sentence polished: “unir” is struck through and “unirme” is added, with an explanation">
 </p>
 
-**Learns your vocabulary.** The model picks 0–3 words worth learning, based on your level (CEFR A1–C2). Words you have seen fewer than three times get an orange dot. Click a word to hear it, or right-click it to mark it as known. You can export everything to Anki.
+**Learns your vocabulary.** The model picks 0–3 words worth learning, based on your level (CEFR A1–C2). Words you have seen fewer than three times get an orange dot. Click a word to hear it, or click ✓ to mark it as learned. Words fade out as you keep writing: you review them just by using them. Browse, delete or export them to Anki in the vocabulary window.
 
 **Stays after you hit Return.** In chat apps you usually press Return as soon as you finish typing. Gloss keeps the translation of the message you just sent on screen for a few seconds, marked *Sent*, so you still get to read it.
 
@@ -125,7 +125,7 @@ If the menu bar is too crowded to show the icon, open Gloss again from Spotlight
 | Read the translation aloud | ⌃⌥S, or the speaker button |
 | Copy the translation | The copy button |
 | Hear a single word | Click the word |
-| Mark a word as known | Right-click the word |
+| Mark a word as learned | Click ✓ next to it, or right-click it |
 | Hide the bubble | Esc, or wait 15 s |
 | Turn Gloss off | The switch at the top of the menu (the icon turns gray) |
 
@@ -161,7 +161,9 @@ If a service rejects them, Gloss retries once without them. With thinking turned
 
 Words are saved per language in `~/Library/Application Support/LiveTranslate/vocab-<language>.json`. A word counts as seen once each time you finish a sentence, not on every pause.
 
-**Export words to Anki** in the menu writes a tab-separated file to your Downloads folder. In Anki, choose **File → Import** and pick that file. Each card has the word on the front. The back shows its meaning, the sentence you actually wrote, and its translation. Anki matches notes by their front side, so with the default import options, importing again updates existing cards instead of duplicating them.
+You review words just by writing. When a word shows up in the popup and you don't click to hear it, it counts as remembered and is shown again only after 1, 3, 7, 15 and 30 days; after that it counts as learned. Clicking a word to hear it starts it over. Words you write yourself in the language you're learning count as learned right away, and words at or below your level are never shown.
+
+**Vocabulary…** in the menu lists your words under Learning and Learned. Search them, listen, mark them as learned, move them back, or delete them (select several and press Delete). **Export to Anki…** in that window writes a tab-separated file to your Downloads folder. In Anki, choose **File → Import** and pick that file. Each card has the word on the front. The back shows its meaning, the sentence you actually wrote, and its translation. Anki matches notes by their front side, so with the default import options, importing again updates existing cards instead of duplicating them.
 
 ## Privacy
 
