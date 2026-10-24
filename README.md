@@ -5,6 +5,7 @@
 <h1 align="center">Gloss</h1>
 
 <p align="center">
+  <b>Learn a language as you type</b><br>
   Translates the sentence you're typing, in any Mac app, and shows it right below your cursor.
 </p>
 

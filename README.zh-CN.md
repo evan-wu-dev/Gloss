@@ -5,6 +5,7 @@
 <h1 align="center">字里行间 · Gloss</h1>
 
 <p align="center">
+  <b>打字时，顺手学外语</b><br>
   在任何 Mac 应用里打字，正在写的这句话的译文就出现在光标下面。
 </p>
 
