@@ -11,22 +11,30 @@ struct FocusSnapshot {
 }
 
 enum AX {
+    /// 只认 AXEnhancedUserInterface、不认 AXManualAccessibility 的应用。飞书（Feishu / Lark）只设后者时输入框读不到。
     private static let chromiumBundles: Set<String> = [
         "com.google.Chrome", "com.microsoft.edgemac", "com.brave.Browser", "company.thebrowser.Browser", "com.vivaldi.Vivaldi",
+        "com.electron.lark",
     ]
-    private static var preparedPIDs: Set<pid_t> = []
+    private static var preparedAt: [pid_t: Date] = [:]
 
     static func snapshot() -> FocusSnapshot? {
         guard let app = NSWorkspace.shared.frontmostApplication, app.processIdentifier != getpid() else { return nil }
         prepare(app)
         let appElement = AXUIElementCreateApplication(app.processIdentifier)
-        guard let element = element(appElement, kAXFocusedUIElementAttribute) else { return nil }
+        guard let element = element(appElement, kAXFocusedUIElementAttribute) else {
+            prepare(app, retry: true)
+            return nil
+        }
         if string(element, kAXSubroleAttribute) == kAXSecureTextFieldSubrole { return nil }
         // 只管能编辑的输入框。钉钉等聊天软件里鼠标悬停到别人的消息，焦点会落到那条消息上，它也有文字和选区，
         // 但内容不能改；不挡掉就会去翻译别人的话。
         guard isEditable(element) else { return nil }
-        guard let text = string(element, kAXValueAttribute), (text as NSString).length <= 20000,
-              let selection = range(element, kAXSelectedTextRangeAttribute) else { return nil }
+        guard let text = string(element, kAXValueAttribute) else {
+            prepare(app, retry: true)
+            return nil
+        }
+        guard (text as NSString).length <= 20000, let selection = range(element, kAXSelectedTextRangeAttribute) else { return nil }
         let cursor = selection.location + selection.length
         guard let sentence = Sentence.target(in: text, cursor: cursor) else { return nil }
         return FocusSnapshot(element: element, pid: app.processIdentifier, text: text, cursor: cursor, sentence: sentence)
@@ -131,9 +139,10 @@ enum AX {
     }
 
     /// Electron 与 Chromium 系默认不暴露网页里的文本，要显式打开辅助功能树。
-    private static func prepare(_ app: NSRunningApplication) {
-        guard !preparedPIDs.contains(app.processIdentifier) else { return }
-        preparedPIDs.insert(app.processIdentifier)
+    /// 应用刚启动、页面还没加载完时设的不一定生效（飞书就是），读不到输入框时隔几秒再设一次。
+    private static func prepare(_ app: NSRunningApplication, retry: Bool = false) {
+        if let last = preparedAt[app.processIdentifier], !retry || Date().timeIntervalSince(last) < 3 { return }
+        preparedAt[app.processIdentifier] = Date()
         let element = AXUIElementCreateApplication(app.processIdentifier)
         AXUIElementSetAttributeValue(element, "AXManualAccessibility" as CFString, kCFBooleanTrue)
         if let bundle = app.bundleIdentifier, chromiumBundles.contains(bundle) {
